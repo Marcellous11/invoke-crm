@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Tiptap placeholder */
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: hsl(var(--muted-foreground) / 0.4);
+  pointer-events: none;
+  height: 0;
+  font-style: italic;
+}
+
+@layer base {
+  :root {
+    /* ── Invoke — light mode ───────────────────────────────────────
+       Primary orange: #FF6421  → hsl(18 100% 56%)
+       Brand blue:     #116DFF  → hsl(217 100% 53%)  (charts only)
+    ─────────────────────────────────────────────────────────────── */
+    --background: 0 0% 93%;      /* #EDEDED — light gray page  */
+    --foreground: 0 0% 4%;
+    --card: 0 0% 100%;           /* #FFFFFF — white cards float */
+    --card-foreground: 0 0% 4%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 4%;
+    --primary: 18 100% 56%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 94%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 94%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 18 100% 96%;
+    --accent-foreground: 18 100% 38%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 84%;          /* #D6D6D6 — visible separation */
+    --input: 0 0% 88%;
+    --ring: 18 100% 56%;
+    --radius: 0.5rem;
+
+    --chart-1: 18  100% 56%;   /* brand orange  #FF6421 */
+    --chart-2: 217 100% 53%;   /* brand blue    #116DFF */
+    --chart-3: 160  55% 42%;   /* teal                  */
+    --chart-4: 280  55% 58%;   /* violet                */
+    --chart-5: 43   90% 55%;   /* amber                 */
+
+    --sidebar-background: 0 0% 100%;  /* white sidebar — elevated above bg */
+    --sidebar-foreground: 0 0% 9%;
+    --sidebar-primary: 18 100% 56%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 93%;
+    --sidebar-accent-foreground: 0 0% 9%;
+    --sidebar-border: 0 0% 84%;
+    --sidebar-ring: 18 100% 56%;
+  }
+
+  .dark {
+    /* ── Invoke — dark mode ────────────────────────────────────────
+       Deep black page, elevated cards, clear border separation
+    ─────────────────────────────────────────────────────────────── */
+    --background: 0 0% 4%;       /* #0A0A0A — page bg          */
+    --foreground: 0 0% 97%;
+    --card: 0 0% 11%;            /* #1C1C1C — clearly elevated */
+    --card-foreground: 0 0% 97%;
+    --popover: 0 0% 11%;
+    --popover-foreground: 0 0% 97%;
+    --primary: 18 100% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 97%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 58%;
+    --accent: 18 80% 13%;
+    --accent-foreground: 18 100% 65%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 20%;          /* #333 — visible separation  */
+    --input: 0 0% 18%;
+    --ring: 18 100% 58%;
+
+    --chart-1: 18  100% 60%;
+    --chart-2: 217 100% 63%;
+    --chart-3: 160  55% 52%;
+    --chart-4: 280  55% 65%;
+    --chart-5: 43   90% 62%;
+
+    --sidebar-background: 0 0% 3%;   /* #080808 — darker than page */
+    --sidebar-foreground: 0 0% 88%;
+    --sidebar-primary: 18 100% 58%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 13%;
+    --sidebar-accent-foreground: 0 0% 97%;
+    --sidebar-border: 0 0% 14%;
+    --sidebar-ring: 18 100% 58%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
