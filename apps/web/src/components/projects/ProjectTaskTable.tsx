@@ -5,8 +5,9 @@ import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { updateTaskAction } from '@/app/actions/tasks'
 import { isPast, isToday, isTomorrow, parseISO, format } from 'date-fns'
-import { CheckSquare, Kanban, ChevronsUpDown, Check, CalendarIcon } from 'lucide-react'
+import { CheckSquare, Kanban, ChevronsUpDown, Check, CalendarIcon, Plus } from 'lucide-react'
 import type { Task, TaskStatus, TaskPriority, User } from '@invoke/types'
+import { TaskModal } from '@/components/board/TaskModal'
 
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -343,6 +344,7 @@ interface ProjectTaskTableProps {
 export function ProjectTaskTable({ initialTasks, projectId, members }: ProjectTaskTableProps) {
   const [tasks, setTasks] = useState(initialTasks)
   const [showDone, setShowDone] = useState(false)
+  const [showModal, setShowModal] = useState(false)
 
   function handleUpdate(taskId: string, patch: TaskPatch) {
     setTasks((prev) => prev.map((t) => t.id === taskId ? { ...t, ...patch } as TaskWithAssignee : t))
@@ -352,28 +354,57 @@ export function ProjectTaskTable({ initialTasks, projectId, members }: ProjectTa
     setTasks((prev) => prev.map((t) => t.id === taskId ? { ...t, status: newStatus } : t))
   }
 
+  function handleCreate(task: Task) {
+    const found = task.assignee_id ? members.find((m) => m.id === task.assignee_id) : undefined
+    const assignee: Assignee | null = found
+      ? { id: found.id, full_name: found.full_name, avatar_url: found.avatar_url }
+      : null
+    setTasks((prev) => [{ ...task, assignee } as TaskWithAssignee, ...prev])
+  }
+
   const open = tasks.filter((t) => t.status !== 'done')
   const done = tasks.filter((t) => t.status === 'done')
   const rowProps = { members, onUpdate: handleUpdate, onToggle: handleToggle }
 
+  const modal = (
+    <TaskModal
+      open={showModal}
+      onClose={() => setShowModal(false)}
+      projectId={projectId}
+      members={members}
+      onSave={handleCreate}
+    />
+  )
+
   if (tasks.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground border rounded-xl bg-card">
-        <CheckSquare className="h-8 w-8 mb-2 opacity-30" />
-        <p className="text-sm font-medium">No tasks yet</p>
-        <p className="text-xs mt-1">
-          Open the{' '}
-          <Link href={`/projects/${projectId}/board`} className="text-primary hover:underline">
-            Kanban board
-          </Link>{' '}
-          to add tasks.
-        </p>
-      </div>
+      <>
+        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground border rounded-xl bg-card">
+          <CheckSquare className="h-8 w-8 mb-2 opacity-30" />
+          <p className="text-sm font-medium">No tasks yet</p>
+          <p className="text-xs mt-1 mb-4">Get started by creating your first task.</p>
+          <Button size="sm" onClick={() => setShowModal(true)}>
+            <Plus className="h-3.5 w-3.5 mr-1.5" />
+            New task
+          </Button>
+        </div>
+        {modal}
+      </>
     )
   }
 
   return (
+    <>
     <div className="border rounded-xl overflow-hidden bg-card">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b bg-muted/20">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          {open.length} open
+        </span>
+        <Button size="sm" variant="outline" className="h-7 gap-1.5" onClick={() => setShowModal(true)}>
+          <Plus className="h-3.5 w-3.5" />
+          New task
+        </Button>
+      </div>
       <table className="w-full">
         <thead>
           <tr className="border-b bg-muted/20">
@@ -422,5 +453,7 @@ export function ProjectTaskTable({ initialTasks, projectId, members }: ProjectTa
         </Link>
       </div>
     </div>
+    {modal}
+    </>
   )
 }
