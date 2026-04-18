@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import Link from 'next/link'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
@@ -8,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Loader2 } from 'lucide-react'
+import { Loader2, ExternalLink } from 'lucide-react'
 import { createTaskAction, updateTaskAction, deleteTaskAction } from '@/app/actions/tasks'
 import type { Task, TaskStatus, TaskPriority, User } from '@invoke/types'
 
@@ -110,7 +111,19 @@ export function TaskModal({
     <Dialog open={open} onOpenChange={(v) => { if (!v) { onClose(); setConfirmDelete(false) } }}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit task' : 'New task'}</DialogTitle>
+          <div className="flex items-center justify-between gap-2">
+            <DialogTitle>{isEditing ? 'Edit task' : 'New task'}</DialogTitle>
+            {isEditing && task && (
+              <Link
+                href={`/tasks/${task.id}`}
+                onClick={onClose}
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mr-4"
+              >
+                <ExternalLink className="h-3 w-3" />
+                Open full view
+              </Link>
+            )}
+          </div>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">

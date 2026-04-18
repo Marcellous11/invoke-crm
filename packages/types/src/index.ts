@@ -85,6 +85,7 @@ export interface Task {
   title: string
   description: string | null
   project_id: string
+  parent_task_id: string | null
   status: TaskStatus
   assignee_id: string | null
   priority: TaskPriority
@@ -95,6 +96,8 @@ export interface Task {
   // joined fields (optional)
   assignee?: Pick<User, 'id' | 'full_name' | 'avatar_url'>
   labels?: TaskLabel[]
+  subtasks?: Task[]
+  project?: Pick<Project, 'id' | 'title'>
 }
 
 export interface TaskLabel {
@@ -102,6 +105,50 @@ export interface TaskLabel {
   task_id: string
   label: string
   color: string
+}
+
+export interface TaskComment {
+  id: string
+  task_id: string
+  author_id: string
+  body: string
+  edited_at: string | null
+  created_at: string
+  // joined
+  author?: Pick<User, 'id' | 'full_name' | 'avatar_url'>
+}
+
+export interface TaskAttachment {
+  id: string
+  task_id: string
+  uploaded_by: string
+  storage_path: string
+  filename: string
+  size_bytes: number
+  mime_type: string | null
+  created_at: string
+  // joined
+  uploader?: Pick<User, 'id' | 'full_name' | 'avatar_url'>
+}
+
+export type TaskEventKind =
+  | 'created'
+  | 'status_changed'
+  | 'assignee_changed'
+  | 'priority_changed'
+  | 'due_date_changed'
+  | 'title_changed'
+
+export interface TaskEvent {
+  id: string
+  task_id: string
+  actor_id: string | null
+  kind: TaskEventKind
+  from_value: string | null
+  to_value: string | null
+  created_at: string
+  // joined
+  actor?: Pick<User, 'id' | 'full_name' | 'avatar_url'> | null
 }
 
 // ─── Activity ────────────────────────────────────────────────────────────────

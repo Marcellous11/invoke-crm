@@ -31,7 +31,9 @@ function dueDateLabel(dateStr: string): { label: string; className: string } {
 function TaskRow({ task, onComplete }: { task: TaskWithProject; onComplete: (id: string) => void }) {
   const [isPending, startTransition] = useTransition()
 
-  function handleCheck() {
+  function handleCheck(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
     startTransition(async () => {
       await updateTaskAction(task.id, task.project_id, { status: 'done' })
       onComplete(task.id)
@@ -39,10 +41,13 @@ function TaskRow({ task, onComplete }: { task: TaskWithProject; onComplete: (id:
   }
 
   return (
-    <div className={cn(
-      'flex items-start gap-3 px-4 py-3 rounded-lg hover:bg-muted/50 transition-colors group',
-      isPending && 'opacity-50'
-    )}>
+    <Link
+      href={`/tasks/${task.id}`}
+      className={cn(
+        'flex items-start gap-3 px-4 py-3 rounded-lg hover:bg-muted/50 transition-colors group',
+        isPending && 'opacity-50',
+      )}
+    >
       {/* Checkbox */}
       <button
         onClick={handleCheck}
@@ -60,14 +65,10 @@ function TaskRow({ task, onComplete }: { task: TaskWithProject; onComplete: (id:
 
         <div className="flex items-center gap-3 mt-1">
           {task.project && (
-            <Link
-              href={`/projects/${task.project.id}/board`}
-              onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
-            >
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <FolderKanban className="h-3 w-3" />
               {task.project.title}
-            </Link>
+            </span>
           )}
           {task.due_date && (
             <span className={cn('flex items-center gap-1 text-xs', dueDateLabel(task.due_date).className)}>
@@ -77,7 +78,7 @@ function TaskRow({ task, onComplete }: { task: TaskWithProject; onComplete: (id:
           )}
         </div>
       </div>
-    </div>
+    </Link>
   )
 }
 
