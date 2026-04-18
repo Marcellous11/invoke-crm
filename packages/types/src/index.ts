@@ -104,6 +104,26 @@ export interface TaskLabel {
   color: string
 }
 
+// ─── Activity ────────────────────────────────────────────────────────────────
+
+export type ActivityType = 'note' | 'call' | 'email' | 'meeting' | 'task'
+
+export interface Activity {
+  id: string
+  client_id: string | null
+  contact_id: string | null
+  project_id: string | null
+  type: ActivityType
+  subject: string
+  body: string | null
+  occurred_at: string
+  created_by: string
+  created_at: string
+  // joined fields (optional)
+  author?: Pick<User, 'id' | 'full_name' | 'avatar_url'>
+  contact?: Pick<Contact, 'id' | 'full_name'> | null
+}
+
 // ─── Kanban helpers ───────────────────────────────────────────────────────────
 
 export const KANBAN_COLUMNS: { id: TaskStatus; title: string }[] = [

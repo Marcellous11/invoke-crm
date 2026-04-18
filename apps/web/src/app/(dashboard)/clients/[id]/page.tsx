@@ -7,13 +7,16 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DeleteClientButton } from '@/components/clients/DeleteClientButton'
 import { ContactList } from '@/components/contacts/ContactList'
-import type { Contact } from '@invoke/types'
+import { ActivityComposer } from '@/components/activities/ActivityComposer'
+import { ActivityTimeline } from '@/components/activities/ActivityTimeline'
+import type { Contact, Activity } from '@invoke/types'
 
 export default async function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
+  const { data: { user: authUser } } = await supabase.auth.getUser()
 
-  const [{ data: client }, { data: projects }, { data: contacts }] = await Promise.all([
+  const [{ data: client }, { data: projects }, { data: contacts }, { data: activities }] = await Promise.all([
     supabase.from('clients').select('*').eq('id', id).single(),
     supabase
       .from('projects')
@@ -25,6 +28,12 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
       .select('*')
       .eq('client_id', id)
       .order('created_at'),
+    supabase
+      .from('activities')
+      .select('*, author:users!activities_created_by_fkey(id, full_name, avatar_url)')
+      .eq('client_id', id)
+      .order('occurred_at', { ascending: false })
+      .limit(50),
   ])
 
   if (!client) notFound()
@@ -139,6 +148,19 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
       {/* Contacts */}
       <div className="mb-8">
         <ContactList clientId={id} contacts={(contacts as Contact[]) ?? []} />
+      </div>
+
+      {/* Activity */}
+      <div className="mb-8">
+        <h2 className="font-semibold mb-3">Activity</h2>
+        <div className="space-y-4">
+          <ActivityComposer clientId={id} />
+          <ActivityTimeline
+            activities={(activities as Activity[]) ?? []}
+            currentUserId={authUser!.id}
+            clientId={id}
+          />
+        </div>
       </div>
 
       {/* Projects */}

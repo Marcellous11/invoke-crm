@@ -7,14 +7,16 @@ import { DeleteProjectButton } from '@/components/projects/DeleteProjectButton'
 import { MembersPanel } from '@/components/projects/MembersPanel'
 import { ProjectDescription } from '@/components/projects/ProjectDescription'
 import { ProjectTaskTable } from '@/components/projects/ProjectTaskTable'
-import type { ProjectMember, Task, User } from '@invoke/types'
+import { ActivityComposer } from '@/components/activities/ActivityComposer'
+import { ActivityTimeline } from '@/components/activities/ActivityTimeline'
+import type { ProjectMember, Task, User, Activity } from '@invoke/types'
 
 export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
   const { data: { user: authUser } } = await supabase.auth.getUser()
 
-  const [{ data: project }, { data: members }, { data: allUsers }, { data: tasks }] = await Promise.all([
+  const [{ data: project }, { data: members }, { data: allUsers }, { data: tasks }, { data: activities }] = await Promise.all([
     supabase.from('projects').select(`*, clients ( id, name )`).eq('id', id).single(),
     supabase
       .from('project_members')
@@ -27,6 +29,12 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       .eq('project_id', id)
       .order('status')
       .order('position'),
+    supabase
+      .from('activities')
+      .select('*, author:users!activities_created_by_fkey(id, full_name, avatar_url)')
+      .eq('project_id', id)
+      .order('occurred_at', { ascending: false })
+      .limit(50),
   ])
 
   if (!project) notFound()
@@ -112,6 +120,19 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
             members={(members ?? []) as unknown as (ProjectMember & { user: Pick<User, 'id' | 'full_name' | 'avatar_url' | 'email'> })[]}
             allUsers={(allUsers ?? []) as unknown as Pick<User, 'id' | 'full_name' | 'avatar_url' | 'email'>[]}
             currentUserId={authUser!.id}
+          />
+        </div>
+      </div>
+
+      {/* Activity */}
+      <div className="mt-10">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Activity</h2>
+        <div className="space-y-4">
+          <ActivityComposer projectId={id} />
+          <ActivityTimeline
+            activities={(activities as Activity[]) ?? []}
+            currentUserId={authUser!.id}
+            projectId={id}
           />
         </div>
       </div>

@@ -13,6 +13,7 @@ create type project_status as enum ('active', 'completed', 'on_hold');
 create type project_member_role as enum ('owner', 'member');
 create type task_status as enum ('backlog', 'in_progress', 'in_review', 'done');
 create type task_priority as enum ('low', 'medium', 'high', 'urgent');
+create type activity_type as enum ('note', 'call', 'email', 'meeting', 'task');
 
 -- ─── SHARED HELPERS ──────────────────────────────────────────────────────────
 
@@ -173,6 +174,27 @@ create table public.task_labels (
   color    text not null default '#6366f1'
 );
 
+-- ─── ACTIVITIES ──────────────────────────────────────────────────────────────
+
+create table public.activities (
+  id           uuid primary key default uuid_generate_v4(),
+  client_id    uuid references public.clients(id)  on delete cascade,
+  contact_id   uuid references public.contacts(id) on delete set null,
+  project_id   uuid references public.projects(id) on delete cascade,
+  type         activity_type not null,
+  subject      text not null,
+  body         text,
+  occurred_at  timestamptz not null default now(),
+  created_by   uuid not null references public.users(id) on delete restrict,
+  created_at   timestamptz not null default now(),
+  constraint activity_has_target
+    check (client_id is not null or contact_id is not null or project_id is not null)
+);
+
+create index activities_client_id_idx  on public.activities (client_id, occurred_at desc);
+create index activities_project_id_idx on public.activities (project_id, occurred_at desc);
+create index activities_contact_id_idx on public.activities (contact_id, occurred_at desc);
+
 -- ─── HELPER FUNCTIONS (security definer — bypass RLS for membership checks) ──
 
 create or replace function public.is_project_member(p_project_id uuid)
@@ -200,6 +222,7 @@ alter table public.projects enable row level security;
 alter table public.project_members enable row level security;
 alter table public.tasks enable row level security;
 alter table public.task_labels enable row level security;
+alter table public.activities enable row level security;
 
 -- Users
 create policy "Users are viewable by authenticated users"
@@ -270,3 +293,20 @@ create policy "Project members can manage task labels"
     select 1 from public.tasks t
     where t.id = task_labels.task_id and public.is_project_member(t.project_id)
   ));
+
+-- Activities
+create policy "Authenticated users can read activities"
+  on public.activities for select to authenticated using (true);
+
+create policy "Users can insert their own activities"
+  on public.activities for insert to authenticated
+  with check (auth.uid() = created_by);
+
+create policy "Authors can update their activities"
+  on public.activities for update to authenticated
+  using (auth.uid() = created_by)
+  with check (auth.uid() = created_by);
+
+create policy "Authors can delete their activities"
+  on public.activities for delete to authenticated
+  using (auth.uid() = created_by);
