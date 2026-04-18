@@ -17,8 +17,6 @@ export interface Client {
   id: string
   name: string
   description: string | null
-  contact_name: string | null
-  contact_email: string | null
   logo_url: string | null
   website: string | null
   phone: string | null
@@ -27,6 +25,24 @@ export interface Client {
   company_size: string | null
   notes: string | null
   tags: string[]
+  created_at: string
+  updated_at: string
+  // joined fields (optional)
+  contacts?: Contact[]
+  primary_contact?: Contact | null
+}
+
+// ─── Contact ─────────────────────────────────────────────────────────────────
+
+export interface Contact {
+  id: string
+  client_id: string
+  full_name: string
+  email: string | null
+  phone: string | null
+  title: string | null
+  is_primary: boolean
+  notes: string | null
   created_at: string
   updated_at: string
 }

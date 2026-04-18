@@ -64,8 +64,6 @@ create table public.clients (
   id            uuid primary key default uuid_generate_v4(),
   name          text not null,
   description   text,
-  contact_name  text,
-  contact_email text,
   logo_url      text,
   website       text,
   phone         text,
@@ -77,6 +75,29 @@ create table public.clients (
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now()
 );
+
+-- ─── CONTACTS ────────────────────────────────────────────────────────────────
+
+create table public.contacts (
+  id          uuid primary key default uuid_generate_v4(),
+  client_id   uuid not null references public.clients(id) on delete cascade,
+  full_name   text not null,
+  email       text,
+  phone       text,
+  title       text,
+  is_primary  boolean not null default false,
+  notes       text,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+
+create index contacts_client_id_idx on public.contacts(client_id);
+create unique index contacts_one_primary_per_client
+  on public.contacts(client_id) where is_primary;
+
+create trigger set_contacts_updated_at
+  before update on public.contacts
+  for each row execute procedure public.trigger_set_timestamp();
 
 create index clients_tags_idx on public.clients using gin (tags);
 
@@ -174,6 +195,7 @@ $$;
 
 alter table public.users enable row level security;
 alter table public.clients enable row level security;
+alter table public.contacts enable row level security;
 alter table public.projects enable row level security;
 alter table public.project_members enable row level security;
 alter table public.tasks enable row level security;
@@ -192,6 +214,13 @@ create policy "Authenticated users can read clients"
 
 create policy "Authenticated users can manage clients"
   on public.clients for all to authenticated using (true) with check (true);
+
+-- Contacts
+create policy "Authenticated users can read contacts"
+  on public.contacts for select to authenticated using (true);
+
+create policy "Authenticated users can manage contacts"
+  on public.contacts for all to authenticated using (true) with check (true);
 
 -- Projects
 create policy "Project members can view projects"

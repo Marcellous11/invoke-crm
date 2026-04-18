@@ -101,29 +101,39 @@ begin
 
   -- ── Clients ───────────────────────────────────────────────
 
-  insert into public.clients (id, name, description, contact_name, contact_email)
-  values (gen_random_uuid(), 'Acme Corp', 'Enterprise SaaS platform for logistics', 'Rachel Torres', 'rachel@acmecorp.io')
+  insert into public.clients (id, name, description)
+  values (gen_random_uuid(), 'Acme Corp', 'Enterprise SaaS platform for logistics')
   returning id into v_acme;
 
-  insert into public.clients (id, name, description, contact_name, contact_email)
-  values (gen_random_uuid(), 'TechStart Inc', 'Early-stage startup building developer tooling', 'Marcus Webb', 'marcus@techstart.dev')
+  insert into public.clients (id, name, description)
+  values (gen_random_uuid(), 'TechStart Inc', 'Early-stage startup building developer tooling')
   returning id into v_techstart;
 
-  insert into public.clients (id, name, description, contact_name, contact_email)
-  values (gen_random_uuid(), 'Meridian Health', 'Healthcare data analytics provider', 'Sofia Nguyen', 'sofia@meridianhealth.com')
+  insert into public.clients (id, name, description)
+  values (gen_random_uuid(), 'Meridian Health', 'Healthcare data analytics provider')
   returning id into v_meridian;
 
-  insert into public.clients (id, name, description, contact_name, contact_email)
-  values (gen_random_uuid(), 'Blue Wave Media', 'Digital marketing and creative agency', 'Jordan Ellis', 'jordan@bluewavemedia.co')
+  insert into public.clients (id, name, description)
+  values (gen_random_uuid(), 'Blue Wave Media', 'Digital marketing and creative agency')
   returning id into v_bluwave;
 
-  insert into public.clients (id, name, description, contact_name, contact_email)
-  values (gen_random_uuid(), 'Forge Robotics', 'Industrial automation and robotics software', 'Ethan Cross', 'ethan@forgerobotics.io')
+  insert into public.clients (id, name, description)
+  values (gen_random_uuid(), 'Forge Robotics', 'Industrial automation and robotics software')
   returning id into v_forge;
 
-  insert into public.clients (id, name, description, contact_name, contact_email)
-  values (gen_random_uuid(), 'Nova Finance', 'Next-gen personal finance and budgeting app', 'Amara Osei', 'amara@novafinance.app')
+  insert into public.clients (id, name, description)
+  values (gen_random_uuid(), 'Nova Finance', 'Next-gen personal finance and budgeting app')
   returning id into v_nova;
+
+  -- ── Contacts ──────────────────────────────────────────────
+
+  insert into public.contacts (client_id, full_name, email, title, is_primary) values
+    (v_acme,      'Rachel Torres', 'rachel@acmecorp.io',       'VP of Engineering', true),
+    (v_techstart, 'Marcus Webb',   'marcus@techstart.dev',     'CTO',               true),
+    (v_meridian,  'Sofia Nguyen',  'sofia@meridianhealth.com', 'Head of Product',   true),
+    (v_bluwave,   'Jordan Ellis',  'jordan@bluewavemedia.co',  'Creative Director', true),
+    (v_forge,     'Ethan Cross',   'ethan@forgerobotics.io',   'Director of Ops',   true),
+    (v_nova,      'Amara Osei',    'amara@novafinance.app',    'Product Lead',      true);
 
   -- ── Projects ──────────────────────────────────────────────
 

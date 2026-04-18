@@ -1,22 +1,30 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Pencil, FolderKanban, Plus, Mail, User } from 'lucide-react'
+import { ArrowLeft, Pencil, FolderKanban, Plus, Globe, Phone, MapPin, Building2, Users as UsersIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DeleteClientButton } from '@/components/clients/DeleteClientButton'
+import { ContactList } from '@/components/contacts/ContactList'
+import type { Contact } from '@invoke/types'
 
 export default async function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
 
-  const [{ data: client }, { data: projects }] = await Promise.all([
+  const [{ data: client }, { data: projects }, { data: contacts }] = await Promise.all([
     supabase.from('clients').select('*').eq('id', id).single(),
     supabase
       .from('projects')
       .select('id, title, status, start_date, end_date')
       .eq('client_id', id)
       .order('created_at', { ascending: false }),
+    supabase
+      .from('contacts')
+      .select('*')
+      .eq('client_id', id)
+      .order('created_at'),
   ])
 
   if (!client) notFound()
@@ -48,6 +56,15 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
             {client.description && (
               <p className="text-muted-foreground mt-1">{client.description}</p>
             )}
+            {client.tags && client.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {client.tags.map((tag: string) => (
+                  <Badge key={tag} variant="secondary" className="font-normal">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -61,30 +78,68 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         </div>
       </div>
 
-      {/* Contact info */}
-      {(client.contact_name || client.contact_email) && (
+      {/* Company info */}
+      {(client.website || client.phone || client.industry || client.company_size || client.address) && (
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Contact</CardTitle>
+            <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Company</CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-wrap gap-6 pt-0">
-            {client.contact_name && (
-              <div className="flex items-center gap-2 text-sm">
-                <User className="h-4 w-4 text-muted-foreground" />
-                {client.contact_name}
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 pt-0 text-sm">
+            {client.website && (
+              <div className="flex items-center gap-2">
+                <Globe className="h-4 w-4 text-muted-foreground shrink-0" />
+                <a
+                  href={client.website.startsWith('http') ? client.website : `https://${client.website}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-primary hover:underline truncate"
+                >
+                  {client.website}
+                </a>
               </div>
             )}
-            {client.contact_email && (
-              <div className="flex items-center gap-2 text-sm">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                <a href={`mailto:${client.contact_email}`} className="text-primary hover:underline">
-                  {client.contact_email}
-                </a>
+            {client.phone && (
+              <div className="flex items-center gap-2">
+                <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                <a href={`tel:${client.phone}`} className="hover:underline">{client.phone}</a>
+              </div>
+            )}
+            {client.industry && (
+              <div className="flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                {client.industry}
+              </div>
+            )}
+            {client.company_size && (
+              <div className="flex items-center gap-2">
+                <UsersIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                {client.company_size} employees
+              </div>
+            )}
+            {client.address && (
+              <div className="flex items-start gap-2 sm:col-span-2">
+                <MapPin className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <span>{client.address}</span>
               </div>
             )}
           </CardContent>
         </Card>
       )}
+
+      {/* Notes */}
+      {client.notes && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Notes</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 text-sm whitespace-pre-wrap">{client.notes}</CardContent>
+        </Card>
+      )}
+
+      {/* Contacts */}
+      <div className="mb-8">
+        <ContactList clientId={id} contacts={(contacts as Contact[]) ?? []} />
+      </div>
 
       {/* Projects */}
       <div className="flex items-center justify-between mb-3">

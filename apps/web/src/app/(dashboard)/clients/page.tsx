@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { Users, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import Link from 'next/link'
 
@@ -10,7 +11,7 @@ export default async function ClientsPage() {
   const supabase = await createClient()
   const { data: clients } = await supabase
     .from('clients')
-    .select('*')
+    .select('*, contacts(id, full_name, email, is_primary)')
     .order('name')
 
   return (
@@ -30,7 +31,10 @@ export default async function ClientsPage() {
 
       {clients && clients.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {clients.map((client) => (
+          {clients.map((client) => {
+            const primary = client.contacts?.find((c: { is_primary: boolean }) => c.is_primary)
+              ?? client.contacts?.[0]
+            return (
             <Link key={client.id} href={`/clients/${client.id}`}>
               <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
                 <CardContent className="flex items-start gap-4 p-5">
@@ -39,20 +43,33 @@ export default async function ClientsPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold truncate">{client.name}</p>
-                    {client.contact_name && (
-                      <p className="text-sm text-muted-foreground truncate">{client.contact_name}</p>
+                    {primary?.full_name && (
+                      <p className="text-sm text-muted-foreground truncate">{primary.full_name}</p>
                     )}
-                    {client.contact_email && (
-                      <p className="text-xs text-muted-foreground truncate">{client.contact_email}</p>
+                    {primary?.email && (
+                      <p className="text-xs text-muted-foreground truncate">{primary.email}</p>
                     )}
                     {client.description && (
                       <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{client.description}</p>
+                    )}
+                    {client.tags && client.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {client.tags.slice(0, 3).map((tag: string) => (
+                          <Badge key={tag} variant="secondary" className="font-normal text-[10px] px-1.5 py-0">
+                            {tag}
+                          </Badge>
+                        ))}
+                        {client.tags.length > 3 && (
+                          <span className="text-[10px] text-muted-foreground">+{client.tags.length - 3}</span>
+                        )}
+                      </div>
                     )}
                   </div>
                 </CardContent>
               </Card>
             </Link>
-          ))}
+            )
+          })}
         </div>
       ) : (
         <div className="text-center py-20 text-muted-foreground">
