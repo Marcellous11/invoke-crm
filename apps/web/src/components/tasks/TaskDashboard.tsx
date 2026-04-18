@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useTransition } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   CheckSquare, Calendar, CalendarDays, AlertCircle,
   FolderKanban, ListTodo, TrendingUp, Clock,
@@ -45,11 +46,14 @@ function TaskRow({
   onToggle: (id: string, newStatus: 'done' | 'backlog') => void
   showProject?: boolean
 }) {
+  const router = useRouter()
   const [pending, startTransition] = useTransition()
   const due = dueDateMeta(task.due_date)
   const done = task.status === 'done'
 
-  function handleCheck() {
+  function handleCheck(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
     const newStatus = done ? 'backlog' : 'done'
     startTransition(async () => {
       await updateTaskAction(task.id, task.project_id, { status: newStatus })
@@ -58,10 +62,13 @@ function TaskRow({
   }
 
   return (
-    <div className={cn(
-      'flex items-start gap-3 px-4 py-3 hover:bg-muted/40 transition-colors group',
-      pending && 'opacity-40 pointer-events-none',
-    )}>
+    <div
+      onClick={() => router.push(`/tasks/${task.id}`)}
+      className={cn(
+        'flex items-start gap-3 px-4 py-3 hover:bg-muted/40 transition-colors group cursor-pointer',
+        pending && 'opacity-40 pointer-events-none',
+      )}
+    >
       {/* checkbox */}
       <button
         onClick={handleCheck}

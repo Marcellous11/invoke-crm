@@ -117,6 +117,7 @@ export function DealsBoard({ initialDeals }: DealsBoardProps) {
 
   return (
     <DndContext
+      id="deals-board"
       sensors={sensors}
       collisionDetection={closestCorners}
       onDragStart={onDragStart}

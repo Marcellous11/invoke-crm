@@ -2,13 +2,13 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import {
-  ArrowLeft,
   Calendar,
   User as UserIcon,
   FolderKanban,
   MessageSquare,
   Flag,
 } from 'lucide-react'
+import { TaskBackLink } from '@/components/tasks/TaskBackLink'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
@@ -169,13 +169,10 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
-      <Link
-        href={`/projects/${task.project_id}/board`}
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        {task.project?.title ?? 'Project'}
-      </Link>
+      <TaskBackLink
+        fallbackHref={`/projects/${task.project_id}/board`}
+        fallbackLabel={task.project?.title ?? 'Project'}
+      />
 
       {/* Header */}
       <div className="flex items-start justify-between gap-4 mb-6">

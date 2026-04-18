@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   DndContext,
   DragEndEvent,
@@ -30,12 +31,12 @@ interface KanbanBoardProps {
 }
 
 export function KanbanBoard({ initialTasks, projectId, members }: KanbanBoardProps) {
+  const router = useRouter()
   const [tasks, setTasks] = useState<EnrichedTask[]>(initialTasks)
   const [activeTask, setActiveTask] = useState<EnrichedTask | null>(null)
 
-  // Modal state
+  // Modal state (only used for creating new tasks — edits open the task detail page)
   const [modalOpen, setModalOpen] = useState(false)
-  const [modalTask, setModalTask] = useState<EnrichedTask | undefined>(undefined)
   const [modalDefaultStatus, setModalDefaultStatus] = useState<TaskStatus>('backlog')
 
   const sensors = useSensors(
@@ -131,31 +132,22 @@ export function KanbanBoard({ initialTasks, projectId, members }: KanbanBoardPro
   }
 
   function openNewTask(status: TaskStatus) {
-    setModalTask(undefined)
     setModalDefaultStatus(status)
     setModalOpen(true)
   }
 
   function openEditTask(task: Task) {
-    setModalTask(task as EnrichedTask)
-    setModalOpen(true)
+    router.push(`/tasks/${task.id}`)
   }
 
   function handleSave(saved: Task) {
-    setTasks((prev) => {
-      const exists = prev.find((t) => t.id === saved.id)
-      if (exists) return prev.map((t) => (t.id === saved.id ? { ...t, ...saved } : t))
-      return [...prev, saved as EnrichedTask]
-    })
-  }
-
-  function handleDelete(taskId: string) {
-    setTasks((prev) => prev.filter((t) => t.id !== taskId))
+    setTasks((prev) => [...prev, saved as EnrichedTask])
   }
 
   return (
     <>
       <DndContext
+        id="kanban-board"
         sensors={sensors}
         collisionDetection={closestCorners}
         onDragStart={onDragStart}
@@ -187,10 +179,8 @@ export function KanbanBoard({ initialTasks, projectId, members }: KanbanBoardPro
         onClose={() => setModalOpen(false)}
         projectId={projectId}
         defaultStatus={modalDefaultStatus}
-        task={modalTask}
         members={members}
         onSave={handleSave}
-        onDelete={handleDelete}
       />
     </>
   )
