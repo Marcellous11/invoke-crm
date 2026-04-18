@@ -14,6 +14,7 @@ export default async function AnalyticsPage() {
     { data: projects },
     { data: clients },
     { data: users },
+    { data: deals },
   ] = await Promise.all([
     supabase.from('clients').select('*', { count: 'exact', head: true }),
     supabase.from('projects').select('*', { count: 'exact', head: true }),
@@ -22,6 +23,9 @@ export default async function AnalyticsPage() {
     supabase.from('projects').select('id, title, status, client_id'),
     supabase.from('clients').select('id, name'),
     supabase.from('users').select('id, full_name'),
+    supabase
+      .from('deals')
+      .select('id, title, stage, value_cents, currency, probability, expected_close_date, owner_id, client_id, lost_reason, created_at, updated_at'),
   ])
 
   return (
@@ -36,6 +40,7 @@ export default async function AnalyticsPage() {
       projects={projects ?? []}
       clients={clients ?? []}
       users={users ?? []}
+      deals={deals ?? []}
     />
   )
 }

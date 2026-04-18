@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import {
   Users, FolderKanban, CheckSquare, Building2,
-  TrendingUp, AlertCircle,
+  TrendingUp, AlertCircle, DollarSign, Target, Trophy, Clock,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -18,6 +18,14 @@ type RawTask    = { id: string; status: string; priority: string; project_id: st
 type RawProject = { id: string; title: string; status: string; client_id: string | null }
 type RawClient  = { id: string; name: string }
 type RawUser    = { id: string; full_name: string | null }
+type RawDeal    = {
+  id: string; title: string; stage: string
+  value_cents: number | null; currency: string
+  probability: number | null; expected_close_date: string | null
+  owner_id: string | null; client_id: string
+  lost_reason: string | null
+  created_at: string; updated_at: string
+}
 
 interface Props {
   totals: { clients: number; projects: number; tasks: number; users: number }
@@ -25,6 +33,7 @@ interface Props {
   projects: RawProject[]
   clients: RawClient[]
   users: RawUser[]
+  deals: RawDeal[]
 }
 
 // ─── configs ──────────────────────────────────────────────────────────────────
@@ -47,6 +56,39 @@ const projectStatusConfig: ChartConfig = {
   active:    { label: 'Active',    color: 'hsl(var(--chart-1))' },
   on_hold:   { label: 'On Hold',   color: 'hsl(var(--chart-3))' },
   completed: { label: 'Completed', color: 'hsl(var(--chart-2))' },
+}
+
+const dealStageConfig: ChartConfig = {
+  lead:        { label: 'Lead',        color: '#64748b' },
+  qualified:   { label: 'Qualified',   color: '#3b82f6' },
+  proposal:    { label: 'Proposal',    color: '#8b5cf6' },
+  negotiation: { label: 'Negotiation', color: '#f59e0b' },
+  won:         { label: 'Won',         color: '#10b981' },
+  lost:        { label: 'Lost',        color: '#f43f5e' },
+}
+
+const OPEN_STAGES = ['lead', 'qualified', 'proposal', 'negotiation'] as const
+
+function formatMoney(cents: number, currency = 'USD') {
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency', currency, maximumFractionDigits: 0,
+    }).format(cents / 100)
+  } catch {
+    return `${currency} ${(cents / 100).toLocaleString()}`
+  }
+}
+
+function formatMoneyShort(cents: number) {
+  const v = cents / 100
+  if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`
+  if (v >= 1_000)     return `$${(v / 1_000).toFixed(1)}k`
+  return `$${v.toFixed(0)}`
+}
+
+function daysUntil(iso: string) {
+  const ms = new Date(iso).getTime() - Date.now()
+  return Math.ceil(ms / (1000 * 60 * 60 * 24))
 }
 
 const animProps = {
@@ -267,7 +309,7 @@ function BreakdownTable({ rows }: { rows: { label: string; value: number; color?
 
 // ─── main ─────────────────────────────────────────────────────────────────────
 
-export function AnalyticsDashboard({ totals, tasks, projects, clients, users }: Props) {
+export function AnalyticsDashboard({ totals, tasks, projects, clients, users, deals }: Props) {
 
   const taskStatusData = useMemo(() => {
     const c = { backlog: 0, in_progress: 0, in_review: 0, done: 0 } as Record<string, number>
@@ -342,6 +384,85 @@ export function AnalyticsDashboard({ totals, tasks, projects, clients, users }: 
     return Object.values(map)
   }, [projects, clients])
 
+  // ─── deals ──────────────────────────────────────────────────────────────────
+
+  const openDeals = useMemo(() => deals.filter((d) => OPEN_STAGES.includes(d.stage as typeof OPEN_STAGES[number])), [deals])
+  const wonDeals  = useMemo(() => deals.filter((d) => d.stage === 'won'),  [deals])
+  const lostDeals = useMemo(() => deals.filter((d) => d.stage === 'lost'), [deals])
+
+  const pipelineValue = openDeals.reduce((s, d) => s + (d.value_cents ?? 0), 0)
+  const weightedPipeline = openDeals.reduce(
+    (s, d) => s + ((d.value_cents ?? 0) * (d.probability ?? 0)) / 100, 0,
+  )
+  const wonValue = wonDeals.reduce((s, d) => s + (d.value_cents ?? 0), 0)
+  const winRate = (wonDeals.length + lostDeals.length) > 0
+    ? Math.round((wonDeals.length / (wonDeals.length + lostDeals.length)) * 100) : 0
+  const avgWonSize = wonDeals.length > 0 ? Math.round(wonValue / wonDeals.length) : 0
+
+  const dealCountByStage = useMemo(() => {
+    const counts: Record<string, number> = { lead: 0, qualified: 0, proposal: 0, negotiation: 0, won: 0, lost: 0 }
+    deals.forEach((d) => { if (counts[d.stage] !== undefined) counts[d.stage]++ })
+    return (['lead','qualified','proposal','negotiation','won','lost'] as const)
+      .map((k) => ({ key: k, name: dealStageConfig[k].label as string, value: counts[k] }))
+      .filter((d) => d.value > 0)
+  }, [deals])
+
+  const pipelineValueByStage = useMemo(() => {
+    const sums: Record<string, number> = { lead: 0, qualified: 0, proposal: 0, negotiation: 0 }
+    openDeals.forEach((d) => { sums[d.stage] = (sums[d.stage] ?? 0) + (d.value_cents ?? 0) })
+    return (['lead','qualified','proposal','negotiation'] as const).map((k) => ({
+      key:   k,
+      name:  dealStageConfig[k].label as string,
+      value: Math.round(sums[k] / 100),
+    }))
+  }, [openDeals])
+
+  const pipelinePerOwner = useMemo(() => {
+    const nameMap: Record<string, string> = {}
+    users.forEach((u) => { nameMap[u.id] = (u.full_name ?? 'Unknown').split(' ')[0] })
+    const sums: Record<string, { name: string; value: number }> = {}
+    openDeals.forEach((d) => {
+      const id = d.owner_id ?? '_unassigned'
+      const name = d.owner_id ? (nameMap[d.owner_id] ?? 'Unknown') : 'Unassigned'
+      if (!sums[id]) sums[id] = { name, value: 0 }
+      sums[id].value += (d.value_cents ?? 0)
+    })
+    return Object.values(sums)
+      .filter((x) => x.value > 0)
+      .sort((a, b) => b.value - a.value)
+      .map((x) => ({ label: x.name, value: Math.round(x.value / 100) }))
+  }, [openDeals, users])
+
+  const closingSoon = useMemo(() => {
+    const clientMap: Record<string, string> = {}
+    clients.forEach((c) => { clientMap[c.id] = c.name })
+    return openDeals
+      .filter((d) => d.expected_close_date && daysUntil(d.expected_close_date) <= 30)
+      .map((d) => ({
+        id: d.id,
+        title: d.title,
+        stage: d.stage as keyof typeof dealStageConfig,
+        value_cents: d.value_cents ?? 0,
+        client: clientMap[d.client_id] ?? 'Unknown',
+        days: daysUntil(d.expected_close_date!),
+      }))
+      .sort((a, b) => a.days - b.days)
+      .slice(0, 8)
+  }, [openDeals, clients])
+
+  const lostReasons = useMemo(() => {
+    const counts: Record<string, number> = {}
+    lostDeals.forEach((d) => {
+      const reason = d.lost_reason?.trim() || 'No reason given'
+      counts[reason] = (counts[reason] ?? 0) + 1
+    })
+    return Object.entries(counts)
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value)
+  }, [lostDeals])
+
+  // ─── tasks/team/projects derived ────────────────────────────────────────────
+
   const openTasks      = tasks.filter((t) => t.status !== 'done').length
   const unassignedOpen = tasks.filter((t) => !t.assignee_id && t.status !== 'done').length
   const urgentTasks    = tasks.filter((t) => t.priority === 'urgent').length
@@ -364,6 +485,7 @@ export function AnalyticsDashboard({ totals, tasks, projects, clients, users }: 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 overflow-hidden px-8 pb-8">
         <TabsList className="shrink-0 w-fit mb-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="deals">Deals</TabsTrigger>
           <TabsTrigger value="tasks">Tasks</TabsTrigger>
           <TabsTrigger value="projects">Projects</TabsTrigger>
           <TabsTrigger value="team">Team</TabsTrigger>
@@ -418,6 +540,162 @@ export function AnalyticsDashboard({ totals, tasks, projects, clients, users }: 
               </Card>
             ))}
           </div>
+        </TabsContent>
+
+        {/* ── DEALS ── */}
+        <TabsContent forceMount value="deals" className={cn('flex-1 overflow-y-auto space-y-6 mt-0', activeTab !== 'deals' && 'hidden')}>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard label="Open Pipeline"      value={formatMoneyShort(pipelineValue)}    icon={DollarSign} color="text-blue-500"    bg="bg-blue-50 dark:bg-blue-950/40"       sub={`${openDeals.length} open deals`} />
+            <StatCard label="Weighted Pipeline"  value={formatMoneyShort(weightedPipeline)} icon={Target}     color="text-violet-500"  bg="bg-violet-50 dark:bg-violet-950/40"   sub="Value × probability" />
+            <StatCard label="Win Rate"           value={`${winRate}%`}                      icon={Trophy}     color="text-emerald-500" bg="bg-emerald-50 dark:bg-emerald-950/40" sub={`${wonDeals.length} won / ${lostDeals.length} lost`} />
+            <StatCard label="Avg Won Deal"       value={avgWonSize > 0 ? formatMoneyShort(avgWonSize) : '—'} icon={TrendingUp} color="text-amber-500" bg="bg-amber-50 dark:bg-amber-950/40" sub={wonDeals.length > 0 ? `${formatMoneyShort(wonValue)} total won` : 'No won deals yet'} />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base font-semibold">Pipeline Value by Stage</CardTitle>
+                <CardDescription>Open deals only · labels show $ value</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={dealStageConfig} className="h-[260px] w-full">
+                  <BarChart data={pipelineValueByStage} barSize={56} margin={{ top: 24, right: 8, bottom: 4, left: 0 }}>
+                    <CartesianGrid vertical={false} {...gridProps} />
+                    <XAxis dataKey="name" {...axisProps} />
+                    <YAxis
+                      {...axisProps}
+                      allowDecimals={false}
+                      tickFormatter={(v: number) =>
+                        v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`
+                      }
+                    />
+                    <ChartTooltip
+                      cursor={{ fill: 'hsl(var(--muted))', radius: 6 }}
+                      content={
+                        <ChartTooltipContent
+                          hideLabel
+                          formatter={(value) => formatMoney((value as number) * 100)}
+                        />
+                      }
+                    />
+                    <Bar dataKey="value" radius={[4,4,0,0]} {...animProps}>
+                      {pipelineValueByStage.map((entry) => (
+                        <Cell key={entry.key} fill={(dealStageConfig[entry.key] as { color: string }).color} />
+                      ))}
+                      <LabelList
+                        dataKey="value"
+                        position="top"
+                        formatter={(v: number) =>
+                          v >= 1000 ? `$${(v / 1000).toFixed(1)}k` : `$${v}`
+                        }
+                        style={{ fontSize: 12, fontWeight: 600, fill: 'hsl(var(--foreground))' }}
+                      />
+                    </Bar>
+                  </BarChart>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base font-semibold">Deals by Stage</CardTitle>
+                <CardDescription>{deals.length} total deals · all-time</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <DonutWithBreakdown data={dealCountByStage} config={dealStageConfig} total={deals.length} label="deals" />
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base font-semibold">Pipeline per Owner</CardTitle>
+                <CardDescription>Sum of open-deal value by owner</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {pipelinePerOwner.length > 0 ? (
+                  <BreakdownTable
+                    rows={pipelinePerOwner.map((p) => ({
+                      label: p.label,
+                      value: p.value,
+                      color: 'hsl(var(--chart-1))',
+                      sub: `${p.label}: ${formatMoney(p.value * 100)}`,
+                    }))}
+                  />
+                ) : (
+                  <p className="text-sm text-muted-foreground py-8 text-center">No open deals with owners</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-amber-500" />
+                  Closing Soon
+                </CardTitle>
+                <CardDescription>Open deals with expected close in the next 30 days</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-2">
+                {closingSoon.length > 0 ? (
+                  <div className="space-y-1">
+                    {closingSoon.map((d) => {
+                      const stageColor = (dealStageConfig[d.stage] as { color: string }).color
+                      const overdue = d.days < 0
+                      return (
+                        <div
+                          key={d.id}
+                          className="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-muted/50 transition-colors"
+                        >
+                          <span
+                            className="h-2 w-2 rounded-full shrink-0"
+                            style={{ backgroundColor: stageColor }}
+                            title={dealStageConfig[d.stage].label as string}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium truncate">{d.title}</p>
+                            <p className="text-xs text-muted-foreground truncate">{d.client}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-sm font-semibold tabular-nums">
+                              {d.value_cents > 0 ? formatMoneyShort(d.value_cents) : '—'}
+                            </p>
+                            <p className={cn(
+                              'text-xs tabular-nums',
+                              overdue ? 'text-red-500' : d.days <= 7 ? 'text-amber-500' : 'text-muted-foreground',
+                            )}>
+                              {overdue ? `${Math.abs(d.days)}d overdue` : d.days === 0 ? 'today' : `${d.days}d`}
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground py-8 text-center">Nothing closing in the next 30 days</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {lostReasons.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base font-semibold">Lost Reasons</CardTitle>
+                <CardDescription>Why deals didn&apos;t close · {lostDeals.length} lost deals</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <BreakdownTable
+                  rows={lostReasons.map((r) => ({
+                    label: r.label,
+                    value: r.value,
+                    color: '#f43f5e',
+                  }))}
+                />
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* ── TASKS ── */}
