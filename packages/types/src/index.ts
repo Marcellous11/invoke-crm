@@ -124,6 +124,34 @@ export interface Activity {
   contact?: Pick<Contact, 'id' | 'full_name'> | null
 }
 
+// ─── Deal ────────────────────────────────────────────────────────────────────
+
+export type DealStage = 'lead' | 'qualified' | 'proposal' | 'negotiation' | 'won' | 'lost'
+
+export interface Deal {
+  id: string
+  client_id: string
+  primary_contact_id: string | null
+  title: string
+  description: string | null
+  stage: DealStage
+  value_cents: number | null
+  currency: string
+  probability: number | null
+  expected_close_date: string | null
+  owner_id: string | null
+  project_id: string | null
+  lost_reason: string | null
+  position: number
+  created_by: string
+  created_at: string
+  updated_at: string
+  // joined fields (optional)
+  client?: Pick<Client, 'id' | 'name'>
+  owner?: Pick<User, 'id' | 'full_name' | 'avatar_url'> | null
+  primary_contact?: Pick<Contact, 'id' | 'full_name' | 'email'> | null
+}
+
 // ─── Kanban helpers ───────────────────────────────────────────────────────────
 
 export const KANBAN_COLUMNS: { id: TaskStatus; title: string }[] = [
@@ -131,6 +159,15 @@ export const KANBAN_COLUMNS: { id: TaskStatus; title: string }[] = [
   { id: 'in_progress', title: 'In Progress' },
   { id: 'in_review', title: 'In Review' },
   { id: 'done', title: 'Done' },
+]
+
+export const DEAL_PIPELINE_COLUMNS: { id: DealStage; title: string }[] = [
+  { id: 'lead',        title: 'Lead' },
+  { id: 'qualified',   title: 'Qualified' },
+  { id: 'proposal',    title: 'Proposal' },
+  { id: 'negotiation', title: 'Negotiation' },
+  { id: 'won',         title: 'Won' },
+  { id: 'lost',        title: 'Lost' },
 ]
 
 // ─── API response helpers ─────────────────────────────────────────────────────

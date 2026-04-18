@@ -16,6 +16,7 @@ import {
   Sun,
   Moon,
   Search,
+  TrendingUp,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -26,6 +27,7 @@ import type { User } from '@invoke/types'
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/clients', label: 'Clients', icon: Users },
+  { href: '/deals', label: 'Deals', icon: TrendingUp },
   { href: '/projects', label: 'Projects', icon: FolderKanban },
   { href: '/tasks', label: 'My Tasks', icon: CheckSquare },
   { href: '/timeline', label: 'Timeline', icon: GanttChart },
