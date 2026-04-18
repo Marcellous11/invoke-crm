@@ -14,6 +14,18 @@ create type project_member_role as enum ('owner', 'member');
 create type task_status as enum ('backlog', 'in_progress', 'in_review', 'done');
 create type task_priority as enum ('low', 'medium', 'high', 'urgent');
 
+-- ─── SHARED HELPERS ──────────────────────────────────────────────────────────
+
+create or replace function public.trigger_set_timestamp()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
 -- ─── USERS (extends auth.users) ──────────────────────────────────────────────
 
 create table public.users (
@@ -55,8 +67,22 @@ create table public.clients (
   contact_name  text,
   contact_email text,
   logo_url      text,
-  created_at    timestamptz not null default now()
+  website       text,
+  phone         text,
+  address       text,
+  industry      text,
+  company_size  text,
+  notes         text,
+  tags          text[] not null default '{}',
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
 );
+
+create index clients_tags_idx on public.clients using gin (tags);
+
+create trigger set_clients_updated_at
+  before update on public.clients
+  for each row execute procedure public.trigger_set_timestamp();
 
 -- ─── PROJECTS ────────────────────────────────────────────────────────────────
 

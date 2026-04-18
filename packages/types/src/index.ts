@@ -20,7 +20,15 @@ export interface Client {
   contact_name: string | null
   contact_email: string | null
   logo_url: string | null
+  website: string | null
+  phone: string | null
+  address: string | null
+  industry: string | null
+  company_size: string | null
+  notes: string | null
+  tags: string[]
   created_at: string
+  updated_at: string
 }
 
 // ─── Project ─────────────────────────────────────────────────────────────────
